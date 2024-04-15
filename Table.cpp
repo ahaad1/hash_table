@@ -4,13 +4,33 @@
 
 /*--- list's node realization ---*/
 ht_list::ht_list() : head(nullptr) {}
-ht_list::~ht_list() { cout << "list destruct\n\n"; }
+ht_list::~ht_list() {
+    node* current = head;
+    while (current != nullptr) {
+        node* next = current->next;
+        delete current;
+        current = next;
+    }
+}
 void * ht_list::node::getKey() const {return this->key;}
 void * ht_list::node::getVal() const {return this->val;}
 void ht_list::node::setKey(void *key, size_t keySize) {this->key = key; this->keySize = keySize;}
 void ht_list::node::setVal(void *val, size_t valSize) {this->val = val; this->valSize = valSize;}
 size_t ht_list::node::getKeySize() const {return this->keySize;}
 size_t ht_list::node::getValSize() const {return this->valSize;}
+void ht_list::node::free_key() {delete key;}
+void ht_list::node::free_val() {delete val;}
+
+ht_list::node::~node() {
+    this->free_key();
+    this->free_val();
+    this->next = nullptr;
+    this->key = nullptr;
+}
+
+size_t hash_table::max_bytes() {
+    return 0;
+}
 /*--- ====================== ---*/
 
 /*--- linked list methods ---*/
@@ -18,8 +38,9 @@ int ht_list::push(void *key, size_t keySize, void *elem, size_t elemSize) {
     for (node * node_iter = head; node_iter != nullptr; node_iter = node_iter->next) {
         if (node_iter->getKeySize() == keySize && memcmp(node_iter->getKey(), key, keySize) == 0) {
             // if key already exists in list - replacing value
+            node_iter->free_val();
             node_iter->setVal(elem, elemSize);
-            return 0;
+            return 1;
         }
     }
     node *newNode = new node(key, keySize, elem, elemSize);
@@ -27,7 +48,7 @@ int ht_list::push(void *key, size_t keySize, void *elem, size_t elemSize) {
     head = newNode;
     return 0;
 }
-//???
+//
 int ht_list::pop(void *key, size_t keySize) {
     node *prev = nullptr;
     for (node *node_iter = head; node_iter != nullptr; prev = node_iter, node_iter = node_iter->next) {
