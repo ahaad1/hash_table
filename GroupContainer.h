@@ -14,9 +14,10 @@ public:
     static int64_t get_hash(void *key, size_t keySize);
 };
 
+//rolling hash ?
 inline int64_t GroupContainer::get_hash(void *key, size_t keySize){
     if(key == nullptr){
-        return 0;
+        return -1;
     }
     auto hash = keySize;
     //const auto *p = (const unsigned char *)key;
