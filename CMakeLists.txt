@@ -16,4 +16,8 @@ add_executable(hash_table
         main.cpp
         Table.cpp
         ListAbstract.h
+        List.cpp
+        List.h
+        Pair.cpp
+        Pair.h
 )
