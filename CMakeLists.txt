@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.20)
 project(hash_table)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -13,10 +13,7 @@ add_executable(hash_table
         GroupList.h
         Mem.h
         MemoryManager.h
-        main.cpp
-        Table.cpp
         ListAbstract.h
-        List.cpp
         List.h
         Pair.cpp
         Pair.h

@@ -1,20 +1,19 @@
 #pragma once
-#include <bits/stdc++.h>
 #include "List.h"
 #include "TableAbstract.h"
 #include "Pair.h"
 
-class hash_table;
-
-class hash_table : public AbstractTable
-{
+class hash_table : public AbstractTable {
 private:
-    class ht_iterator : public Container::Iterator
-    {
+    class ht_iterator : public Container::Iterator {
     private:
-        hash_table * _hash_table{};
-        size_t cur_iter_index{};
+        hash_table* _hash_table_iter;
+        STLListWrapper::ListIterator* _current_table_cell_iter;
+        size_t _table_iter_index;
+
+        size_t change_nxt_table_cell();
     public:
+        explicit ht_iterator(hash_table* ht);
         void* getElement(size_t &size) override;
         bool hasNext() override;
         void goToNext() override;
@@ -23,19 +22,17 @@ private:
         friend class hash_table;
     };
 
-    List **table{};
+    STLListWrapper **table{};
     size_t length{};
     size_t pair_cnt{};
 
     void compress_table();
     void expand_table();
-    void cpex_event(); // compression - extension table event
+    void cpex_event();
 
 public:
     explicit hash_table(MemoryManager &mem);
     ~hash_table() override;
-
-    hash_table::ht_iterator* iterator{};
 
     int insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) override;
     void removeByKey(void *key, size_t keySize) override;

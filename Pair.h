@@ -1,4 +1,5 @@
 #pragma once
+#include "MemoryManager.h"
 #include <bits/stdc++.h>
 
 class Pair {
@@ -14,6 +15,6 @@ public:
     void setVal(void *val, size_t valSize);
     void *getKey() const;
     void *getVal() const;
-    void free_key();
-    void free_val();
+    void free_key(MemoryManager &mem);
+    void free_val(MemoryManager &mem);
 };
