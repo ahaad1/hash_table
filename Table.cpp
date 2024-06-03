@@ -1,7 +1,7 @@
 #include "Table.h"
 
 hash_table::hash_table(MemoryManager &mem) : AbstractTable(mem), length(16), pair_cnt(0) {
-    table = static_cast<STLListWrapper**>(mem.allocMem(length * sizeof(STLListWrapper*)));
+    table = static_cast<Pair **>(mem.allocMem(length * sizeof(Pair *)));
     for (size_t i = 0; i < length; ++i) {
         table[i] = nullptr;
     }
@@ -13,7 +13,7 @@ hash_table::~hash_table() {
 }
 
 size_t hash_table::hash_function(void *key, size_t keySize) {
-    if(key == nullptr){
+    if (key == nullptr) {
         return -1;
     }
     auto hash = keySize;
@@ -23,22 +23,27 @@ size_t hash_table::hash_function(void *key, size_t keySize) {
         p++;
     }
 
-    return static_cast<int64_t>(hash) % length;
+    return static_cast<size_t>(hash) % length;
 }
 
 int hash_table::insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) {
     size_t hash = hash_function(key, keySize);
+    Pair *newPair = new Pair(key, keySize, elem, elemSize);
+
     if (table[hash] == nullptr) {
-        table[hash] = new STLListWrapper(_memory);
+        table[hash] = newPair;
+    } else {
+        Pair *current = table[hash];
+        while (current != nullptr) {
+            if (memcmp(current->getKey(), key, keySize) == 0) {
+                delete newPair;
+                return 1;
+            }
+            current = current->next;
+        }
+        newPair->next = table[hash];
+        table[hash] = newPair;
     }
-    Pair p(key, keySize, elem, elemSize);
-    Iterator* is_find = table[hash]->find(&p, sizeof(Pair));
-    if (is_find != nullptr) {
-        delete is_find;
-        is_find = nullptr;
-        return 1; // elem with this key already exists
-    }
-    table[hash]->push_front(&p, sizeof(Pair));
     ++pair_cnt;
     if (pair_cnt > length) {
         expand_table();
@@ -48,58 +53,51 @@ int hash_table::insertByKey(void *key, size_t keySize, void *elem, size_t elemSi
 
 void hash_table::removeByKey(void *key, size_t keySize) {
     size_t hash = hash_function(key, keySize);
-    if (table[hash] != nullptr) {
-        Iterator* iter = table[hash]->newIterator();
-        while (iter->hasNext()) {
-            size_t size;
-            Pair* p = static_cast<Pair*>(iter->getElement(size));
-            if (p != nullptr && p->getKeySize() == keySize && memcmp(p->getKey(), key, keySize) == 0) {
-                table[hash]->remove(iter);
-                --pair_cnt;
-                delete iter;
-                break;
+    Pair *current = table[hash];
+    Pair *prev = nullptr;
+
+    while (current != nullptr) {
+        if (memcmp(current->getKey(), key, keySize) == 0) {
+            if (prev == nullptr) {
+                table[hash] = current->next;
+            } else {
+                prev->next = current->next;
             }
-            iter->goToNext();
+            delete current;
+            --pair_cnt;
+            if (pair_cnt < length / 4) {
+                compress_table();
+            }
+            return;
         }
-        delete iter;
-    }
-    if (pair_cnt < length / 4) {
-        compress_table();
+        prev = current;
+        current = current->next;
     }
 }
 
-Container::Iterator* hash_table::findByKey(void *key, size_t keySize) {
+Container::Iterator *hash_table::findByKey(void *key, size_t keySize) {
     size_t hash = hash_function(key, keySize);
-    if (table[hash] != nullptr) {
-        Iterator* iter = table[hash]->newIterator();
-        while (iter->hasNext()) {
-            size_t size;
-            Pair* p = static_cast<Pair*>(iter->getElement(size));
-            if (p != nullptr && p->getKeySize() == keySize && memcmp(p->getKey(), key, keySize) == 0) {
-                return iter;
-            }
-            iter->goToNext();
+    Pair *current = table[hash];
+
+    while (current != nullptr) {
+        if (memcmp(current->getKey(), key, keySize) == 0) {
+            return new ht_iterator(this, current);
         }
-        delete iter;
+        current = current->next;
     }
     return nullptr;
 }
 
-void* hash_table::at(void *key, size_t keySize, size_t &valueSize) {
+void *hash_table::at(void *key, size_t keySize, size_t &valueSize) {
     size_t hash = hash_function(key, keySize);
-    if (table[hash] != nullptr) {
-        Iterator* iter = table[hash]->newIterator();
-        while (iter->hasNext()) {
-            size_t size;
-            Pair* p = static_cast<Pair*>(iter->getElement(size));
-            if (p != nullptr && p->getKeySize() == keySize && memcmp(p->getKey(), key, keySize) == 0) {
-                valueSize = p->getValSize();
-                delete iter;
-                return p->getVal();
-            }
-            iter->goToNext();
+    Pair *current = table[hash];
+
+    while (current != nullptr) {
+        if (memcmp(current->getKey(), key, keySize) == 0) {
+            valueSize = current->getValSize();
+            return current->getVal();
         }
-        delete iter;
+        current = current->next;
     }
     valueSize = 0;
     return nullptr;
@@ -107,26 +105,19 @@ void* hash_table::at(void *key, size_t keySize, size_t &valueSize) {
 
 void hash_table::compress_table() {
     size_t new_length = length / 2;
-    STLListWrapper** new_table = static_cast<STLListWrapper**>(_memory.allocMem(new_length * sizeof(STLListWrapper*)));
+    Pair **new_table = static_cast<Pair **>(_memory.allocMem(new_length * sizeof(Pair *)));
     for (size_t i = 0; i < new_length; ++i) {
         new_table[i] = nullptr;
     }
 
     for (size_t i = 0; i < length; ++i) {
-        if (table[i] != nullptr) {
-            Iterator* iter = table[i]->newIterator();
-            while (iter->hasNext()) {
-                size_t size;
-                Pair* p = static_cast<Pair*>(iter->getElement(size));
-                size_t new_hash = hash_function(p->getKey(), p->getKeySize()) % new_length;
-                if (new_table[new_hash] == nullptr) {
-                    new_table[new_hash] = new STLListWrapper(_memory);
-                }
-                new_table[new_hash]->push_front(p, sizeof(Pair));
-                iter->goToNext();
-            }
-            delete iter;
-            delete table[i];
+        Pair *current = table[i];
+        while (current != nullptr) {
+            Pair *next = current->next;
+            size_t new_hash = hash_function(current->getKey(), current->getKeySize()) % new_length;
+            current->next = new_table[new_hash];
+            new_table[new_hash] = current;
+            current = next;
         }
     }
 
@@ -137,26 +128,19 @@ void hash_table::compress_table() {
 
 void hash_table::expand_table() {
     size_t new_length = length * 2;
-    STLListWrapper** new_table = static_cast<STLListWrapper**>(_memory.allocMem(new_length * sizeof(STLListWrapper*)));
+    Pair **new_table = static_cast<Pair **>(_memory.allocMem(new_length * sizeof(Pair *)));
     for (size_t i = 0; i < new_length; ++i) {
         new_table[i] = nullptr;
     }
 
     for (size_t i = 0; i < length; ++i) {
-        if (table[i] != nullptr) {
-            Iterator* iter = table[i]->newIterator();
-            while (iter->hasNext()) {
-                size_t size;
-                Pair* p = static_cast<Pair*>(iter->getElement(size));
-                size_t new_hash = hash_function(p->getKey(), p->getKeySize()) % new_length;
-                if (new_table[new_hash] == nullptr) {
-                    new_table[new_hash] = new STLListWrapper(_memory);
-                }
-                new_table[new_hash]->push_front(p, sizeof(Pair));
-                iter->goToNext();
-            }
-            delete iter;
-            delete table[i];
+        Pair *current = table[i];
+        while (current != nullptr) {
+            Pair *next = current->next;
+            size_t new_hash = hash_function(current->getKey(), current->getKeySize()) % new_length;
+            current->next = new_table[new_hash];
+            new_table[new_hash] = current;
+            current = next;
         }
     }
 
@@ -166,46 +150,41 @@ void hash_table::expand_table() {
 }
 
 int hash_table::size() {
-    return pair_cnt;
+    return static_cast<int>(pair_cnt);
 }
 
 size_t hash_table::max_bytes() {
-    return length * sizeof(STLListWrapper*);
+    return length * sizeof(Pair *);
 }
 
-Container::Iterator* hash_table::newIterator() {
-    return new ht_iterator(this);
+Container::Iterator *hash_table::newIterator() {
+    for (size_t i = 0; i < length; ++i) {
+        if (table[i] != nullptr) {
+            return new ht_iterator(this, table[i]);
+        }
+    }
+    return nullptr;
 }
 
-void hash_table::remove(Container::Iterator* iter) {
-    auto* ht_iter = dynamic_cast<ht_iterator*>(iter);
+void hash_table::remove(Container::Iterator *iter) {
+    auto *ht_iter = dynamic_cast<ht_iterator *>(iter);
     if (ht_iter != nullptr) {
         size_t size;
-        void* element = ht_iter->getElement(size);
+        void *element = ht_iter->getElement(size);
         if (element != nullptr) {
-//            ht_iter->_current_table_cell_iter->remove(iter);
-            delete ht_iter->_current_table_cell_iter->getElement(size);
-            --pair_cnt;
-            if (pair_cnt < length / 4) {
-                compress_table();
-            }
+            removeByKey(static_cast<Pair *>(element)->getKey(), static_cast<Pair *>(element)->getKeySize());
         }
     }
 }
 
-Container::Iterator* hash_table::find(void *elem, size_t size) {
+Container::Iterator *hash_table::find(void *elem, size_t size) {
     for (size_t i = 0; i < length; ++i) {
-        if (table[i] != nullptr) {
-            Iterator* iter = table[i]->newIterator();
-            while (iter->hasNext()) {
-                size_t elem_size;
-                Pair* p = static_cast<Pair*>(iter->getElement(elem_size));
-                if (p != nullptr && memcmp(p->getVal(), elem, size) == 0) {
-                    return iter;
-                }
-                iter->goToNext();
+        Pair *current = table[i];
+        while (current != nullptr) {
+            if (memcmp(current->getVal(), elem, size) == 0) {
+                return new ht_iterator(this, current);
             }
-            delete iter;
+            current = current->next;
         }
     }
     return nullptr;
@@ -213,11 +192,13 @@ Container::Iterator* hash_table::find(void *elem, size_t size) {
 
 void hash_table::clear() {
     for (size_t i = 0; i < length; ++i) {
-        if (table[i] != nullptr) {
-            table[i]->clear();
-            delete table[i];
-            table[i] = nullptr;
+        Pair *current = table[i];
+        while (current != nullptr) {
+            Pair *next = current->next;
+            delete current;
+            current = next;
         }
+        table[i] = nullptr;
     }
     pair_cnt = 0;
 }
@@ -227,62 +208,39 @@ bool hash_table::empty() {
 }
 
 /* ========== ht_iterator ========== */
-hash_table::ht_iterator::ht_iterator(hash_table* ht) : _hash_table_iter(ht), _table_iter_index(0) {
-    while (_table_iter_index < _hash_table_iter->length && (_hash_table_iter->table[_table_iter_index] == nullptr || _hash_table_iter->table[_table_iter_index]->empty())) {
-        ++_table_iter_index;
-    }
-    if (_table_iter_index < _hash_table_iter->length) {
-        _current_table_cell_iter = static_cast<STLListWrapper::ListIterator*>(_hash_table_iter->table[_table_iter_index]->newIterator());
-    } else {
-        _current_table_cell_iter = nullptr;
-    }
+hash_table::ht_iterator::ht_iterator(hash_table *ht, Pair *current) : _hash_table_iter(ht), _current(current),
+                                                                      _bucket_index(0) {
+    moveToNextValid();
 }
 
-void* hash_table::ht_iterator::getElement(size_t &size) {
-    if (_current_table_cell_iter == nullptr) {
+void *hash_table::ht_iterator::getElement(size_t &size) {
+    if (_current == nullptr) {
         size = 0;
         return nullptr;
     }
-    return _current_table_cell_iter->getElement(size);
+    size = sizeof(Pair);
+    return _current;
 }
 
 bool hash_table::ht_iterator::hasNext() {
-    if (_current_table_cell_iter != nullptr && _current_table_cell_iter->hasNext()) {
-        return true;
-    }
-    size_t temp_index = _table_iter_index + 1;
-    while (temp_index < _hash_table_iter->length) {
-        if (_hash_table_iter->table[temp_index] != nullptr && !_hash_table_iter->table[temp_index]->empty()) {
-            return true;
-        }
-        ++temp_index;
-    }
-    return false;
-}
-
-size_t hash_table::ht_iterator::change_nxt_table_cell() {
-    for (size_t i = _table_iter_index + 1; i < _hash_table_iter->length; ++i) {
-        if (_hash_table_iter->table[i] != nullptr && !_hash_table_iter->table[i]->empty()) {
-            return i;
-        }
-    }
-    return _hash_table_iter->length;
+    return _current != nullptr && _current->next != nullptr;
 }
 
 void hash_table::ht_iterator::goToNext() {
-    if (_current_table_cell_iter != nullptr && _current_table_cell_iter->hasNext()) {
-        _current_table_cell_iter->goToNext();
-    } else {
-        delete _current_table_cell_iter;
-        _current_table_cell_iter = nullptr;
-        _table_iter_index = change_nxt_table_cell();
-        if (_table_iter_index < _hash_table_iter->length) {
-            _current_table_cell_iter = static_cast<STLListWrapper::ListIterator*>(_hash_table_iter->table[_table_iter_index]->newIterator());
-        }
+    if (_current != nullptr) {
+        _current = _current->next;
     }
+    moveToNextValid();
 }
 
-bool hash_table::ht_iterator::equals(Container::Iterator* right) {
-    auto* right_iter = static_cast<ht_iterator*>(right);
-    return _table_iter_index == right_iter->_table_iter_index && _current_table_cell_iter == right_iter->_current_table_cell_iter;
+bool hash_table::ht_iterator::equals(Container::Iterator *right) {
+    auto *right_iter = static_cast<ht_iterator *>(right);
+    return _current == right_iter->_current;
+}
+
+void hash_table::ht_iterator::moveToNextValid() {
+    while (_current == nullptr && _bucket_index < _hash_table_iter->length) {
+        _current = _hash_table_iter->table[_bucket_index];
+        _bucket_index++;
+    }
 }

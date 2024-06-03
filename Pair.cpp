@@ -1,6 +1,6 @@
 #include "Pair.h"
 
-Pair::Pair(void *key, size_t keySize, void *val, size_t valSize) {
+Pair::Pair(void *key, size_t keySize, void *val, size_t valSize) : next(nullptr) {
     this->key = key;
     this->keySize = keySize;
     this->val = val;

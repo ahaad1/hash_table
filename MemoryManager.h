@@ -8,8 +8,7 @@ private:
 public:
     MemoryManager(size_t sz): _size(sz) {}
 
-    size_t size()
-    {
+    size_t size() {
         return _size;
     }
 

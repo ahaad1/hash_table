@@ -1,5 +1,4 @@
 #pragma once
-#include "List.h"
 #include "TableAbstract.h"
 #include "Pair.h"
 
@@ -8,12 +7,12 @@ private:
     class ht_iterator : public Container::Iterator {
     private:
         hash_table* _hash_table_iter;
-        STLListWrapper::ListIterator* _current_table_cell_iter;
-        size_t _table_iter_index;
+        Pair* _current;
+        size_t _bucket_index;
 
-        size_t change_nxt_table_cell();
+        void moveToNextValid();
     public:
-        explicit ht_iterator(hash_table* ht);
+        explicit ht_iterator(hash_table* ht, Pair* current);
         void* getElement(size_t &size) override;
         bool hasNext() override;
         void goToNext() override;
@@ -22,13 +21,12 @@ private:
         friend class hash_table;
     };
 
-    STLListWrapper **table{};
-    size_t length{};
-    size_t pair_cnt{};
+    Pair **table;
+    size_t length;
+    size_t pair_cnt;
 
     void compress_table();
     void expand_table();
-    void cpex_event();
 
 public:
     explicit hash_table(MemoryManager &mem);

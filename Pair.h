@@ -1,12 +1,13 @@
 #pragma once
 #include "MemoryManager.h"
-#include <bits/stdc++.h>
 
 class Pair {
 private:
     void *key, *val;
     size_t keySize, valSize;
 public:
+    Pair *next;
+
     Pair(void *key, size_t keySize, void *val, size_t valSize);
     ~Pair();
     size_t getKeySize() const;

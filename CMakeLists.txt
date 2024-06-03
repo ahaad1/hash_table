@@ -10,11 +10,9 @@ add_executable(hash_table
         TableAbstract.h
         Container.h
         GroupContainer.h
-        GroupList.h
         Mem.h
         MemoryManager.h
-        ListAbstract.h
-        List.h
         Pair.cpp
         Pair.h
+        "HashTableTester.h"
 )
