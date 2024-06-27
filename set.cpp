@@ -3,11 +3,7 @@
 
 Set::Set(MemoryManager &mem) : AbstractSet(mem) {
     length = 10000;
-    set_data = (List**)_memory.allocMem(sizeof(List*) * length);
-    elem_count = 0;
-    for (size_t i = 0; i < length; ++i) {
-        set_data[i] = nullptr;
-    }
+    init_table(reinterpret_cast<void**&>(set_data), length);
 }
 
 Set::SetIterator::SetIterator(Iterator* iterator, Set* s, int i) : set(s), list_iterator(dynamic_cast<List::Iterator*>(iterator)) {}
@@ -108,13 +104,7 @@ void Set::remove(Iterator *iter) {
 }
 
 void Set::clear() {
-    for (size_t i = 0; i < length; ++i) {
-        if (set_data[i]) {
-            set_data[i]->clear();
-            delete set_data[i];
-            set_data[i] = nullptr;
-        }
-    }
+    free_table(reinterpret_cast<void**&>(set_data), length);
     elem_count = 0;
 }
 
@@ -128,7 +118,7 @@ Set::~Set() {
 }
 
 void Set::resize_table(size_t new_length) {
-    List** new_set_data = (List**)_memory.allocMem(sizeof(List*) * new_length);
+    List** new_set_data = static_cast<List**>(_memory.allocMem(sizeof(List*) * new_length));
     if (!new_set_data) throw Container::Error("Memory allocation failed during set resizing.");
 
     for (size_t i = 0; i < new_length; ++i) new_set_data[i] = nullptr;

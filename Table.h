@@ -34,9 +34,9 @@ public:
 
     ~hash_table() override;
 
-    int insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) override;
-
     size_t hash_function(void *key, size_t keySize) override;
+
+    int insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) override;
 
     void removeByKey(void *key, size_t keySize) override;
 

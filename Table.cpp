@@ -1,12 +1,9 @@
-// table.cpp
+// Table.cpp
 #include "Table.h"
 
 hash_table::hash_table(MemoryManager &mem) : AbstractTable(mem) {
-    length = 64;
-    table = static_cast<Pair **>(mem.allocMem(length * sizeof(Pair *)));
-    if (!table) throw Container::Error("Memory allocation failed for hash table.");
-    for (size_t i = 0; i < length; ++i) table[i] = nullptr;
-    elem_count = 0;
+    length = 16;
+    init_table(reinterpret_cast<void**&>(table), length);
 }
 
 hash_table::~hash_table() {
@@ -57,9 +54,10 @@ void hash_table::removeByKey(void *key, size_t keySize) {
                 prev->next = current->next;
             }
             delete current;
+            current = nullptr;
             --elem_count;
 
-            if (elem_count < length / 4 && length > 64) resize_table(length / 2);
+            if (elem_count < length / 4 && length > 16) resize_table(length / 2);
 
             return;
         }
@@ -160,16 +158,19 @@ Container::Iterator *hash_table::find(void *elem, size_t size) {
 }
 
 void hash_table::clear() {
-    for (size_t i = 0; i < length; ++i) {
+    for(size_t i = 0; i < length; ++i) {
         Pair *current = table[i];
-        while (current != nullptr) {
+        while(current!=nullptr) {
             Pair *next = current->next;
             delete current;
-            current = next;
+            current = nullptr;
         }
         table[i] = nullptr;
     }
+    free_table(reinterpret_cast<void**&>(table), length);
     elem_count = 0;
+    length = 16;
+    init_table(reinterpret_cast<void**&>(table), length);
 }
 
 bool hash_table::empty() {
