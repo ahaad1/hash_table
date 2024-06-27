@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(hash_table)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 23)
 
 add_executable(hash_table
         main.cpp
@@ -14,5 +14,5 @@ add_executable(hash_table
         MemoryManager.h
         Pair.cpp
         Pair.h
-        "HashTableTester.h"
+        HashTableTester.h
 )

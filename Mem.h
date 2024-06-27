@@ -12,5 +12,6 @@ public:
 
     void freeMem(void* ptr) override {
         delete[] static_cast<char*>(ptr);
+        ptr = nullptr;
     }
 };

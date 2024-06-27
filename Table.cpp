@@ -1,7 +1,8 @@
 #include "Table.h"
 
-hash_table::hash_table(MemoryManager &mem) : AbstractTable(mem), length(16), pair_cnt(0) {
+hash_table::hash_table(MemoryManager &mem) : AbstractTable(mem), length(64), pair_cnt(0) {
     table = static_cast<Pair **>(mem.allocMem(length * sizeof(Pair *)));
+    if (!table) throw Container::Error("Memory allocation failed for hash table.");
     for (size_t i = 0; i < length; ++i) {
         table[i] = nullptr;
     }
@@ -13,46 +14,47 @@ hash_table::~hash_table() {
 }
 
 size_t hash_table::hash_function(void *key, size_t keySize) {
-    if (key == nullptr) {
-        return -1;
-    }
-    auto hash = keySize;
-    const auto *p = static_cast<const unsigned char *>(key);
-    while (*p != '\0') {
-        hash ^= ((hash << keySize) + hash) + (*p);
-        p++;
-    }
+    const size_t FNV_prime = 16777619;
+    const size_t offset_basis = 2166136261;
+    const unsigned char *data = static_cast<const unsigned char *>(key);
+    size_t hash = offset_basis;
 
-    return static_cast<size_t>(hash) % length;
+    for (size_t i = 0; i < keySize; ++i) {
+        hash ^= data[i];
+        hash *= FNV_prime;
+    }
+    return hash;
 }
 
 int hash_table::insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) {
-    size_t hash = hash_function(key, keySize);
+    size_t hash = hash_function(key, keySize) % length;
     Pair *newPair = new Pair(key, keySize, elem, elemSize);
 
-    if (table[hash] == nullptr) {
-        table[hash] = newPair;
-    } else {
-        Pair *current = table[hash];
-        while (current != nullptr) {
-            if (memcmp(current->getKey(), key, keySize) == 0) {
-                delete newPair;
-                return 1;
-            }
-            current = current->next;
+    if (!newPair) throw Container::Error("Memory allocation failed for Pair.");
+
+    Pair *current = table[hash];
+    Pair *prev = nullptr;
+    while (current != nullptr) {
+        if (memcmp(current->getKey(), key, keySize) == 0) {
+            delete newPair;
+            return 1;
         }
-        newPair->next = table[hash];
-        table[hash] = newPair;
+        prev = current;
+        current = current->next;
     }
+
+    newPair->next = table[hash];
+    table[hash] = newPair;
     ++pair_cnt;
+
     if (pair_cnt > length) {
-        expand_table();
+        resize_table(length * 2);
     }
     return 0;
 }
 
 void hash_table::removeByKey(void *key, size_t keySize) {
-    size_t hash = hash_function(key, keySize);
+    size_t hash = hash_function(key, keySize) % length;
     Pair *current = table[hash];
     Pair *prev = nullptr;
 
@@ -65,8 +67,9 @@ void hash_table::removeByKey(void *key, size_t keySize) {
             }
             delete current;
             --pair_cnt;
-            if (pair_cnt < length / 4) {
-                compress_table();
+
+            if (pair_cnt < length / 4 && length > 64) {
+                resize_table(length / 2);
             }
             return;
         }
@@ -76,7 +79,7 @@ void hash_table::removeByKey(void *key, size_t keySize) {
 }
 
 Container::Iterator *hash_table::findByKey(void *key, size_t keySize) {
-    size_t hash = hash_function(key, keySize);
+    size_t hash = hash_function(key, keySize) % length;
     Pair *current = table[hash];
 
     while (current != nullptr) {
@@ -89,7 +92,7 @@ Container::Iterator *hash_table::findByKey(void *key, size_t keySize) {
 }
 
 void *hash_table::at(void *key, size_t keySize, size_t &valueSize) {
-    size_t hash = hash_function(key, keySize);
+    size_t hash = hash_function(key, keySize) % length;
     Pair *current = table[hash];
 
     while (current != nullptr) {
@@ -100,35 +103,13 @@ void *hash_table::at(void *key, size_t keySize, size_t &valueSize) {
         current = current->next;
     }
     valueSize = 0;
-    return nullptr;
+    throw Container::Error("Key not found.");
 }
 
-void hash_table::compress_table() {
-    size_t new_length = length / 2;
+void hash_table::resize_table(size_t new_length) {
     Pair **new_table = static_cast<Pair **>(_memory.allocMem(new_length * sizeof(Pair *)));
-    for (size_t i = 0; i < new_length; ++i) {
-        new_table[i] = nullptr;
-    }
+    if (!new_table) throw Container::Error("Memory allocation failed during table resizing.");
 
-    for (size_t i = 0; i < length; ++i) {
-        Pair *current = table[i];
-        while (current != nullptr) {
-            Pair *next = current->next;
-            size_t new_hash = hash_function(current->getKey(), current->getKeySize()) % new_length;
-            current->next = new_table[new_hash];
-            new_table[new_hash] = current;
-            current = next;
-        }
-    }
-
-    _memory.freeMem(table);
-    table = new_table;
-    length = new_length;
-}
-
-void hash_table::expand_table() {
-    size_t new_length = length * 2;
-    Pair **new_table = static_cast<Pair **>(_memory.allocMem(new_length * sizeof(Pair *)));
     for (size_t i = 0; i < new_length; ++i) {
         new_table[i] = nullptr;
     }
@@ -208,8 +189,7 @@ bool hash_table::empty() {
 }
 
 /* ========== ht_iterator ========== */
-hash_table::ht_iterator::ht_iterator(hash_table *ht, Pair *current) : _hash_table_iter(ht), _current(current),
-                                                                      _bucket_index(0) {
+hash_table::ht_iterator::ht_iterator(hash_table *ht, Pair *current) : _hash_table_iter(ht), _current(current), _bucket_index(0) {
     moveToNextValid();
 }
 
@@ -234,7 +214,7 @@ void hash_table::ht_iterator::goToNext() {
 }
 
 bool hash_table::ht_iterator::equals(Container::Iterator *right) {
-    auto *right_iter = static_cast<ht_iterator *>(right);
+    auto *right_iter = dynamic_cast<ht_iterator *>(right);
     return _current == right_iter->_current;
 }
 

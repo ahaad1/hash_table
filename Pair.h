@@ -1,5 +1,7 @@
 #pragma once
 #include "MemoryManager.h"
+#include <cstring>
+#include "Container.h"
 
 class Pair {
 private:
