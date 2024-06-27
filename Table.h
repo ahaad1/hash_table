@@ -26,18 +26,21 @@ private:
         friend class hash_table;
     };
 
-    Pair **table;
+    Pair **table1;
+    Pair **table2;
     size_t length;
     size_t pair_cnt;
 
-    void compress_table();
-    void expand_table();
-    void resize_table(size_t new_length);
+    size_t hash_function1(void *key, size_t keySize);
+    size_t hash_function2(void *key, size_t keySize);
+    void rehash();
 
 public:
     explicit hash_table(MemoryManager &mem);
 
     ~hash_table() override;
+
+    size_t hash_function(void *key, size_t keySize) override;
 
     int insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) override;
 
@@ -47,19 +50,17 @@ public:
 
     void *at(void *key, size_t keySize, size_t &valueSize) override;
 
-    size_t hash_function(void *key, size_t keySize) override;
-
     int size() override;
 
     size_t max_bytes() override;
 
     Iterator *find(void *elem, size_t size) override;
 
-    Iterator *newIterator() override;
-
     void remove(Iterator *iter) override;
 
     void clear() override;
 
     bool empty() override;
+
+    Iterator *newIterator() override;
 };
