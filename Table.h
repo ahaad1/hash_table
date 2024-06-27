@@ -1,3 +1,4 @@
+// table.h
 #pragma once
 #include "TableAbstract.h"
 #include "Pair.h"
@@ -27,12 +28,6 @@ private:
     };
 
     Pair **table;
-    size_t length;
-    size_t pair_cnt;
-
-    void compress_table();
-    void expand_table();
-    void resize_table(size_t new_length);
 
 public:
     explicit hash_table(MemoryManager &mem);
@@ -41,13 +36,15 @@ public:
 
     int insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) override;
 
+    size_t hash_function(void *key, size_t keySize) override;
+
     void removeByKey(void *key, size_t keySize) override;
 
     Iterator *findByKey(void *key, size_t keySize) override;
 
     void *at(void *key, size_t keySize, size_t &valueSize) override;
 
-    size_t hash_function(void *key, size_t keySize) override;
+    void resize_table(size_t new_length) override;
 
     int size() override;
 

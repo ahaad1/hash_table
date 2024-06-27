@@ -15,4 +15,11 @@ add_executable(hash_table
         Pair.cpp
         Pair.h
         HashTableTester.h
+        Set.h
+        set.cpp
+        GroupList.cpp
+        GroupList.h
+        GroupList.h
+        list.cpp
+        list.h
 )

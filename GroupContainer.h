@@ -1,28 +1,27 @@
+// GroupContainer.h
 #pragma once
 #include "Container.h"
 
-// Базовый класс для некоторой группы абстрактных контейнеров
-class GroupContainer: public Container
-{
+class GroupContainer : public Container {
+protected:
+    size_t length;
+    size_t elem_count;
+
 public:
-    GroupContainer(MemoryManager &mem): Container(mem) {}
+    GroupContainer(MemoryManager &mem) : Container(mem), length(64), elem_count(0) {}
 
-    /* function generating hash value for any obj
-    returns hash value or NULL */ 
-    static int64_t get_hash(void *key, size_t keySize);
+    size_t hash_function(void *key, size_t keySize) {
+        const size_t FNV_prime = 16777619;
+        const size_t offset_basis = 2166136261;
+        const unsigned char *data = static_cast<const unsigned char *>(key);
+        size_t hash = offset_basis;
+
+        for (size_t i = 0; i < keySize; ++i) {
+            hash ^= data[i];
+            hash *= FNV_prime;
+        }
+        return hash;
+    }
+    
+    virtual void resize_table(size_t new_length) = 0;
 };
-
-//rolling hash ?
-inline int64_t GroupContainer::get_hash(void *key, size_t keySize){
-    if(key == nullptr){
-        return -1;
-    }
-    auto hash = keySize;
-    const auto *p = static_cast<const unsigned char *>(key);
-    while (*p != '\0') {
-        hash ^= ((hash << keySize) + hash) + (*p);
-        p++;
-    }
-
-    return static_cast<int64_t>(hash);
-}

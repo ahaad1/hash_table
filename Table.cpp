@@ -1,11 +1,12 @@
+// table.cpp
 #include "Table.h"
 
-hash_table::hash_table(MemoryManager &mem) : AbstractTable(mem), length(64), pair_cnt(0) {
+hash_table::hash_table(MemoryManager &mem) : AbstractTable(mem) {
+    length = 64;
     table = static_cast<Pair **>(mem.allocMem(length * sizeof(Pair *)));
     if (!table) throw Container::Error("Memory allocation failed for hash table.");
-    for (size_t i = 0; i < length; ++i) {
-        table[i] = nullptr;
-    }
+    for (size_t i = 0; i < length; ++i) table[i] = nullptr;
+    elem_count = 0;
 }
 
 hash_table::~hash_table() {
@@ -14,22 +15,13 @@ hash_table::~hash_table() {
 }
 
 size_t hash_table::hash_function(void *key, size_t keySize) {
-    const size_t FNV_prime = 16777619;
-    const size_t offset_basis = 2166136261;
-    const unsigned char *data = static_cast<const unsigned char *>(key);
-    size_t hash = offset_basis;
-
-    for (size_t i = 0; i < keySize; ++i) {
-        hash ^= data[i];
-        hash *= FNV_prime;
-    }
-    return hash;
+    return GroupContainer::hash_function(key, keySize);
 }
+
 
 int hash_table::insertByKey(void *key, size_t keySize, void *elem, size_t elemSize) {
     size_t hash = hash_function(key, keySize) % length;
     Pair *newPair = new Pair(key, keySize, elem, elemSize);
-
     if (!newPair) throw Container::Error("Memory allocation failed for Pair.");
 
     Pair *current = table[hash];
@@ -45,11 +37,10 @@ int hash_table::insertByKey(void *key, size_t keySize, void *elem, size_t elemSi
 
     newPair->next = table[hash];
     table[hash] = newPair;
-    ++pair_cnt;
+    ++elem_count;
 
-    if (pair_cnt > length) {
-        resize_table(length * 2);
-    }
+    if (elem_count > length) resize_table(length * 2);
+
     return 0;
 }
 
@@ -66,11 +57,10 @@ void hash_table::removeByKey(void *key, size_t keySize) {
                 prev->next = current->next;
             }
             delete current;
-            --pair_cnt;
+            --elem_count;
 
-            if (pair_cnt < length / 4 && length > 64) {
-                resize_table(length / 2);
-            }
+            if (elem_count < length / 4 && length > 64) resize_table(length / 2);
+
             return;
         }
         prev = current;
@@ -110,9 +100,7 @@ void hash_table::resize_table(size_t new_length) {
     Pair **new_table = static_cast<Pair **>(_memory.allocMem(new_length * sizeof(Pair *)));
     if (!new_table) throw Container::Error("Memory allocation failed during table resizing.");
 
-    for (size_t i = 0; i < new_length; ++i) {
-        new_table[i] = nullptr;
-    }
+    for (size_t i = 0; i < new_length; ++i) new_table[i] = nullptr;
 
     for (size_t i = 0; i < length; ++i) {
         Pair *current = table[i];
@@ -131,7 +119,7 @@ void hash_table::resize_table(size_t new_length) {
 }
 
 int hash_table::size() {
-    return static_cast<int>(pair_cnt);
+    return static_cast<int>(elem_count);
 }
 
 size_t hash_table::max_bytes() {
@@ -181,11 +169,11 @@ void hash_table::clear() {
         }
         table[i] = nullptr;
     }
-    pair_cnt = 0;
+    elem_count = 0;
 }
 
 bool hash_table::empty() {
-    return pair_cnt == 0;
+    return elem_count == 0;
 }
 
 /* ========== ht_iterator ========== */
