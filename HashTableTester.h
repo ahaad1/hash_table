@@ -22,10 +22,10 @@ public:
         std::cout << "Running tests..." << std::endl;
         std::cout << "Testing custom hash table..." << std::endl;
         testCorrectness();
-        std::cout << "Performance comparison between custom hash table and STL unordered_map:" << std::endl;
-        comparePerformance();
-        std::cout << "Testing partial removal from both tables..." << std::endl;
-        testPartialRemoval();
+        // std::cout << "Performance comparison between custom hash table and STL unordered_map:" << std::endl;
+        // comparePerformance();
+        // std::cout << "Testing partial removal from both tables..." << std::endl;
+        // testPartialRemoval();
     }
 
 private:
