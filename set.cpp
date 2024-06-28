@@ -117,7 +117,7 @@ Set::~Set() {
     _memory.freeMem(set_data);
 }
 
-void Set::resize_table(size_t new_length) {
+void Set::rehash_function(size_t new_length) {
     List** new_set_data = static_cast<List**>(_memory.allocMem(sizeof(List*) * new_length));
     if (!new_set_data) throw Container::Error("Memory allocation failed during set resizing.");
 
@@ -160,7 +160,7 @@ int Set::insert(void *elem, size_t size) {
     }
 
     if (set_data[hash]->size() == 50) {
-        resize_table(length * 2);
+        rehash_function(length * 2);
         hash = hash_function(elem, size) % length;
     }
 

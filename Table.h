@@ -44,7 +44,7 @@ public:
 
     void *at(void *key, size_t keySize, size_t &valueSize) override;
 
-    void resize_table(size_t new_length) override;
+    void rehash_function(size_t new_length) override;
 
     int size() override;
 

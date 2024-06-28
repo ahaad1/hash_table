@@ -51,5 +51,5 @@ public:
 
     int insert(void *elem, size_t size);
 
-    void resize_table(size_t new_length) override;
+    void rehash_function(size_t new_length) override;
 };

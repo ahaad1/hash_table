@@ -22,10 +22,10 @@ public:
         std::cout << "Running tests..." << std::endl;
         std::cout << "Testing custom hash table..." << std::endl;
         testCorrectness();
-        // std::cout << "Performance comparison between custom hash table and STL unordered_map:" << std::endl;
-        // comparePerformance();
-        // std::cout << "Testing partial removal from both tables..." << std::endl;
-        // testPartialRemoval();
+        std::cout << "Performance comparison between custom hash table and STL unordered_map:" << std::endl;
+        comparePerformance();
+        std::cout << "Testing partial removal from both tables..." << std::endl;
+        testPartialRemoval();
     }
 
 private:
@@ -168,7 +168,7 @@ private:
             try {
                 customValue = table.at(reinterpret_cast<void *>(const_cast<char *>(key_itr.first.c_str())), key_itr.first.size() + 1, valueSize);
             } catch (const Container::Error &e) {
-                // Do nothing
+                std::cerr << e.msg << std::endl;
             }
 
             auto stlValue = stlTable.find(key_itr.first);
@@ -187,7 +187,7 @@ private:
                 void *customValue = table.at(reinterpret_cast<void *>(const_cast<char *>(key_itr.first.c_str())), key_itr.first.size() + 1, valueSize);
                 assert(customValue == nullptr);
             } catch (const Container::Error &e) {
-                // Do nothing
+                std::cerr << e.msg << std::endl;
             }
             assert(stlTable.find(key_itr.first) == stlTable.end());
         }
@@ -209,7 +209,7 @@ private:
             try {
                 customValue = table.at(reinterpret_cast<void *>(const_cast<char *>(keys[i])), strlen(keys[i]) + 1, valueSize);
             } catch (const Container::Error &e) {
-                // Do nothing
+                std::cerr << e.msg << std::endl;
             }
             auto stlValue = stlTable.find(keys[i]);
 
@@ -227,7 +227,7 @@ private:
                 void *customValue = table.at(reinterpret_cast<void *>(const_cast<char *>(keys[i])), strlen(keys[i]) + 1, valueSize);
                 assert(customValue == nullptr);
             } catch (const Container::Error &e) {
-                // Do nothing
+                std::cerr << e.msg << std::endl;
             }
             assert(stlTable.find(keys[i]) == stlTable.end());
         }

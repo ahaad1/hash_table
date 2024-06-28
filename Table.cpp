@@ -36,7 +36,7 @@ int hash_table::insertByKey(void *key, size_t keySize, void *elem, size_t elemSi
     table[hash] = newPair;
     ++elem_count;
 
-    if (elem_count > length) resize_table(length * 2);
+    if (elem_count > length) rehash_function(length * 2);
 
     return 0;
 }
@@ -57,7 +57,7 @@ void hash_table::removeByKey(void *key, size_t keySize) {
             current = nullptr;
             --elem_count;
 
-            if (elem_count < length / 4 && length > 16) resize_table(length / 2);
+            if (elem_count < length / 4 && length > 16) rehash_function(length / 2);
 
             return;
         }
@@ -94,7 +94,7 @@ void *hash_table::at(void *key, size_t keySize, size_t &valueSize) {
     throw Container::Error("Key not found.");
 }
 
-void hash_table::resize_table(size_t new_length) {
+void hash_table::rehash_function(size_t new_length) {
     Pair **new_table = static_cast<Pair **>(_memory.allocMem(new_length * sizeof(Pair *)));
     if (!new_table) throw Container::Error("Memory allocation failed during table resizing.");
 
@@ -121,7 +121,7 @@ int hash_table::size() {
 }
 
 size_t hash_table::max_bytes() {
-    return length * sizeof(Pair *);
+    return GroupContainer::max_bytes();
 }
 
 Container::Iterator *hash_table::newIterator() {
@@ -174,7 +174,7 @@ void hash_table::clear() {
 }
 
 bool hash_table::empty() {
-    return elem_count == 0;
+    return GroupContainer::empty();
 }
 
 /* ========== ht_iterator ========== */
